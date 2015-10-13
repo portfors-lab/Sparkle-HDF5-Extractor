@@ -3,7 +3,6 @@ import csv
 import h5py
 import operator
 import numpy as np
-import threading
 
 from PyQt4 import QtCore, QtGui
 from main_ui import Ui_MainWindow
@@ -20,7 +19,6 @@ class MyForm(QtGui.QMainWindow):
         self.h_file = h5py.File
 
         QtCore.QObject.connect(self.ui.pushButton_browse, QtCore.SIGNAL("clicked()"), self.browse)
-        # QtCore.QObject.connect(self.ui.comboBox_test_num, QtCore.SIGNAL("clicked()"), self.browse)
         QtCore.QObject.connect(self.ui.pushButton_start, QtCore.SIGNAL("clicked()"), self.start)
 
     def browse(self):
@@ -495,12 +493,25 @@ class MyForm(QtGui.QMainWindow):
             stats_file.close()
 
         self.ui.textEdit.append('Extraction Complete\n')
+        import subprocess
+        e_open = 'explorer /root, ' + get_folder_path(str(filename))
+        # subprocess.Popen('explorer /root, C:\Users\Joel\Documents\Mouse1580')
+        subprocess.Popen(e_open)
+        # subprocess.Popen(e_open)
+        print(e_open)
 
     def start(self):
 
         self.ui.progressBar.reset()
         QtCore.QTimer.singleShot(0, self.extract)
 
+def get_folder_path(path):
+    edit_path = path.replace('/', '\\')
+    split_list = edit_path.split('\\')
+    new_path = ''
+    for item in split_list[:-1]:
+        new_path = new_path + item + '\\'
+    return new_path
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
