@@ -494,11 +494,8 @@ class MyForm(QtGui.QMainWindow):
 
         self.ui.textEdit.append('Extraction Complete\n')
         import subprocess
-        e_open = 'explorer /root, ' + get_folder_path(str(filename))
-        # subprocess.Popen('explorer /root, C:\Users\Joel\Documents\Mouse1580')
-        subprocess.Popen(e_open)
-        # subprocess.Popen(e_open)
-        print(e_open)
+        explorer_open = 'explorer /root, ' + get_folder_path(str(filename))
+        subprocess.Popen(explorer_open)
 
     def start(self):
 
