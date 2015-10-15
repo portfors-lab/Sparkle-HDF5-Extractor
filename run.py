@@ -61,7 +61,7 @@ class MyForm(QtGui.QMainWindow):
             return
 
         if self.ui.doubleSpinBox_threshold.value() == 0:
-            self.ui.textEdit.append('Error: Threshold has a value of 0')
+            self.ui.textEdit.append('Warning: Threshold has a value of 0\n')
 
         # Display parameters
         self.ui.textEdit.append('File: ' + self.filename)
@@ -105,7 +105,11 @@ class MyForm(QtGui.QMainWindow):
                     # print 'Cal:', key
 
                     temp_filename = filename.replace('.hdf5', '_') + key + '.csv'
-                    cal_file = open(temp_filename, 'wb')
+                    try:
+                        cal_file = open(temp_filename, 'wb')
+                    except IOError, e:
+                        self.ui.textEdit.append('Unable to open ' + get_file_name(temp_filename))
+                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
                     cal_writer = csv.writer(cal_file)
 
                     cal_writer.writerow([key])
@@ -130,20 +134,25 @@ class MyForm(QtGui.QMainWindow):
             spike_times_dict = {}
 
             if 'All Tests' in extract_test:
-                stats_file_name = filename.replace('.hdf5', '_') + 'spikes.csv'
+                if export_spikes:
+                    stats_file_name = filename.replace('.hdf5', '_') + 'spikes.csv'
 
-                stats_file = open(stats_file_name, 'wb')
-                stats_writer = csv.writer(stats_file)
+                    try:
+                        stats_file = open(stats_file_name, 'wb')
+                    except IOError, e:
+                        self.ui.textEdit.append('Unable to open ' + get_file_name(stats_file_name))
+                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
+                    stats_writer = csv.writer(stats_file)
 
-                stats_writer.writerow(['File', filename])
-                stats_writer.writerow(['Test', extract_test])
-                stats_writer.writerow(['Threshold', threshold])
-                stats_writer.writerow(['Type', thresh_type])
-                stats_writer.writerow([])
-                stats_writer.writerow(
-                    ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
-                     'Spike Times (ms)'])
-                stats_writer.writerow([])
+                    stats_writer.writerow(['File', filename])
+                    stats_writer.writerow(['Test', extract_test])
+                    stats_writer.writerow(['Threshold', threshold])
+                    stats_writer.writerow(['Type', thresh_type])
+                    stats_writer.writerow([])
+                    stats_writer.writerow(
+                        ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
+                         'Spike Times (ms)'])
+                    stats_writer.writerow([])
 
                 # Convert all tests
                 key_count = -1
@@ -166,7 +175,11 @@ class MyForm(QtGui.QMainWindow):
 
                             if export_raw:
                                 temp_filename = filename + key + '_' + test + '_raw.csv'
-                                seg_file = open(temp_filename, 'wb')
+                                try:
+                                    seg_file = open(temp_filename, 'wb')
+                                except IOError, e:
+                                    self.ui.textEdit.append('Unable to open ' + get_file_name(temp_filename))
+                                    self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
                                 seg_writer = csv.writer(seg_file)
 
                                 seg_writer.writerow([key.replace('segment_', 'seg_'), ''])
@@ -285,12 +298,13 @@ class MyForm(QtGui.QMainWindow):
                                         spike_count_dict[data_key] = spike_count
                                         spike_times_dict[data_key] = spike_times
 
-                                        stats_writer.writerow(
-                                            [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                             'rep_' + str(rep),
-                                             'chan_' + str(channel), '', spike_count_dict[data_key],
-                                             first_spike_dict[data_key],
-                                             ''] + spike_times_dict[data_key])
+                                        if export_spikes:
+                                            stats_writer.writerow(
+                                                [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                                 'rep_' + str(rep),
+                                                 'chan_' + str(channel), '', spike_count_dict[data_key],
+                                                 first_spike_dict[data_key],
+                                                 ''] + spike_times_dict[data_key])
 
                                         reps_percent = (float(rep)) / reps
                                         traces_percent = (float(trace) - 1 + reps_percent) / traces
@@ -319,20 +333,25 @@ class MyForm(QtGui.QMainWindow):
                     print ''
 
             else:
-                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_spikes.csv'
+                if export_spikes:
+                    stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_spikes.csv'
 
-                stats_file = open(stats_file_name, 'wb')
-                stats_writer = csv.writer(stats_file)
+                    try:
+                        stats_file = open(stats_file_name, 'wb')
+                    except IOError, e:
+                        self.ui.textEdit.append('Unable to open ' + get_file_name(stats_file_name))
+                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
+                    stats_writer = csv.writer(stats_file)
 
-                stats_writer.writerow(['File', filename])
-                stats_writer.writerow(['Test', extract_test])
-                stats_writer.writerow(['Threshold', threshold])
-                stats_writer.writerow(['Type', thresh_type])
-                stats_writer.writerow([])
-                stats_writer.writerow(
-                    ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
-                     'Spike Times (ms)'])
-                stats_writer.writerow([])
+                    stats_writer.writerow(['File', filename])
+                    stats_writer.writerow(['Test', extract_test])
+                    stats_writer.writerow(['Threshold', threshold])
+                    stats_writer.writerow(['Type', thresh_type])
+                    stats_writer.writerow([])
+                    stats_writer.writerow(
+                        ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
+                         'Spike Times (ms)'])
+                    stats_writer.writerow([])
 
                 for key in h_file.keys():
 
@@ -347,7 +366,11 @@ class MyForm(QtGui.QMainWindow):
 
                                 if export_raw:
                                     temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_raw.csv'
-                                    seg_file = open(temp_filename, 'wb')
+                                    try:
+                                        seg_file = open(temp_filename, 'wb')
+                                    except IOError, e:
+                                        self.ui.textEdit.append('Unable to open ' + get_file_name(temp_filename))
+                                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
                                     seg_writer = csv.writer(seg_file)
 
                                     seg_writer.writerow([key.replace('segment_', 'seg_'), ''])
@@ -468,12 +491,13 @@ class MyForm(QtGui.QMainWindow):
                                             spike_count_dict[data_key] = spike_count
                                             spike_times_dict[data_key] = spike_times
 
-                                            stats_writer.writerow(
-                                                [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                                 'rep_' + str(rep),
-                                                 'chan_' + str(channel), '', spike_count_dict[data_key],
-                                                 first_spike_dict[data_key],
-                                                 ''] + spike_times_dict[data_key])
+                                            if export_spikes:
+                                                stats_writer.writerow(
+                                                    [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                                     'rep_' + str(rep),
+                                                     'chan_' + str(channel), '', spike_count_dict[data_key],
+                                                     first_spike_dict[data_key],
+                                                     ''] + spike_times_dict[data_key])
 
                                             reps_percent = (float(rep)) / reps
                                             traces_percent = (float(trace) - 1 + reps_percent) / traces
@@ -490,7 +514,8 @@ class MyForm(QtGui.QMainWindow):
                                     seg_file.close()
                                 self.ui.textEdit.append(test + ' Complete\n')
 
-            stats_file.close()
+            if export_spikes:
+                stats_file.close()
 
         self.ui.textEdit.append('Extraction Complete\n')
         import subprocess
@@ -509,6 +534,11 @@ def get_folder_path(path):
     for item in split_list[:-1]:
         new_path = new_path + item + '\\'
     return new_path
+
+def get_file_name(path):
+    edit_path = path.replace('/', '\\')
+    split_list = edit_path.split('\\')
+    return split_list[-1]
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)

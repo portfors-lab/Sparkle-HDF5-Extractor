@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'c:/Users/Joel/Documents/Sparkle-HDF5-Extractor/main.ui'
 #
-# Created: Tue Oct 13 15:05:31 2015
+# Created: Thu Oct 15 15:32:44 2015
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -83,7 +83,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3 = QtGui.QHBoxLayout()
         self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
         self.doubleSpinBox_threshold = QtGui.QDoubleSpinBox(self.centralwidget)
-        self.doubleSpinBox_threshold.setDecimals(3)
+        self.doubleSpinBox_threshold.setDecimals(4)
         self.doubleSpinBox_threshold.setMaximum(100.0)
         self.doubleSpinBox_threshold.setSingleStep(0.001)
         self.doubleSpinBox_threshold.setObjectName(_fromUtf8("doubleSpinBox_threshold"))

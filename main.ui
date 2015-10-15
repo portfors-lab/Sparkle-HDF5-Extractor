@@ -130,7 +130,7 @@
              <string> V</string>
             </property>
             <property name="decimals">
-             <number>3</number>
+             <number>4</number>
             </property>
             <property name="maximum">
              <double>100.000000000000000</double>
