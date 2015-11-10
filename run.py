@@ -1,6 +1,7 @@
 import sys
 import csv
 import h5py
+import json
 import operator
 import numpy as np
 
@@ -23,7 +24,6 @@ class MyForm(QtGui.QMainWindow):
 
     def browse(self):
         self.ui.comboBox_test_num.clear()
-        self.ui.comboBox_test_num.addItem('All Tests')
 
         QtGui.QFileDialog(self)
         self.filename = QtGui.QFileDialog.getOpenFileName()
@@ -127,398 +127,144 @@ class MyForm(QtGui.QMainWindow):
         # Print all of the samples
         np.set_printoptions(threshold='nan')
 
-        if export_spikes or export_raw:
-            data_dict = {}
-            first_spike_dict = {}
-            spike_count_dict = {}
-            spike_times_dict = {}
+        # --------------------------------------------------------------------------------------------------------------
 
-            if 'All Tests' in extract_test:
-                if export_spikes:
-                    stats_file_name = filename.replace('.hdf5', '_') + 'spikes.csv'
+        if export_spikes:
+            if 'inverse' in thresh_type:
+                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_inverse_spikes(' + str(threshold) + 'V).csv'
+            else:
+                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_spikes(' + str(threshold) + 'V).csv'
 
-                    try:
-                        stats_file = open(stats_file_name, 'wb')
-                    except IOError, e:
-                        self.ui.textEdit.append('Unable to open ' + get_file_name(stats_file_name))
-                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
-                    stats_writer = csv.writer(stats_file)
+            try:
+                stats_file = open(stats_file_name, 'wb')
+            except IOError, e:
+                self.ui.textEdit.append('Unable to open ' + get_file_name(stats_file_name))
+                self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
+            stats_writer = csv.writer(stats_file)
 
-                    stats_writer.writerow(['File', filename])
-                    stats_writer.writerow(['Test', extract_test])
-                    stats_writer.writerow(['Threshold', threshold])
-                    stats_writer.writerow(['Type', thresh_type])
-                    stats_writer.writerow([])
-                    stats_writer.writerow(
-                        ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
-                         'Spike Times (ms)'])
-                    stats_writer.writerow([])
+            stats_writer.writerow(['File', filename])
+            stats_writer.writerow(['Test', extract_test])
+            stats_writer.writerow(['Threshold', threshold])
+            stats_writer.writerow(['Type', thresh_type])
+            stats_writer.writerow([])
+            stats_writer.writerow(
+                ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
+                 'Spike Times (ms)'])
+            stats_writer.writerow([])
 
-                # Convert all tests
-                key_count = -1
-                key_total = len(h_file.keys())
+        for key in h_file.keys():
 
-                for key in h_file.keys():
-                    key_count += 1
+            # If key is a segment
+            if 'segment' in key:
+                seg_sample_rate = h_file[key].attrs['samplerate_ad']
 
-                    # If key is a segment
-                    if 'segment' in key:
-                        # print 'Seg:', key
+                for test in h_file[key].keys():
+                    if test == extract_test:
 
-                        seg_sample_rate = h_file[key].attrs['samplerate_ad']
+                        if export_raw:
+                            if 'inverse' in thresh_type:
+                                temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_raw.csv'
+                            else:
+                                temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_raw.csv'
+                            try:
+                                seg_file = open(temp_filename, 'wb')
+                            except IOError, e:
+                                self.ui.textEdit.append('Unable to open ' + get_file_name(temp_filename))
+                                self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
+                            seg_writer = csv.writer(seg_file)
 
-                        test_count = -1
-                        test_total = len(h_file[key].keys())
-
-                        for test in h_file[key].keys():
-                            test_count += 1
-
-                            if export_raw:
-                                temp_filename = filename + key + '_' + test + '_raw.csv'
-                                try:
-                                    seg_file = open(temp_filename, 'wb')
-                                except IOError, e:
-                                    self.ui.textEdit.append('Unable to open ' + get_file_name(temp_filename))
-                                    self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
-                                seg_writer = csv.writer(seg_file)
-
-                                seg_writer.writerow([key.replace('segment_', 'seg_'), ''])
-                                seg_writer.writerow(['', test])
-
+                        if len(h_file[key][test].value.shape) > 3:
+                            no_chan = False
                             traces = h_file[key][test].value.shape[0]
                             reps = h_file[key][test].value.shape[1]
                             channels = h_file[key][test].value.shape[2]
                             samples = h_file[key][test].value.shape[3]
+                        else:
+                            no_chan = True
+                            traces = h_file[key][test].value.shape[0]
+                            reps = h_file[key][test].value.shape[1]
+                            channels = 1
+                            samples = h_file[key][test].value.shape[2]
 
-                            # Measured in seconds
-                            window_duration = samples / seg_sample_rate
-                            sample_length = window_duration / samples
-                            # Convert to ms
-                            sample_length_ms = sample_length * 1000
-                            for trace in islice(count(1), traces):
-                                # print '    ', '    ', trace
-                                if export_raw:
-                                    seg_writer.writerow(['', '', 'trace_' + str(trace)])
-                                for rep in islice(count(1), reps):
-                                    # print '    ', '    ', '    ', rep
+                        print no_chan
+
+                        # Measured in seconds
+                        window_duration = samples / seg_sample_rate
+                        sample_length = window_duration / samples
+                        # Convert to ms
+                        sample_length_ms = sample_length * 1000
+                        for trace in islice(count(1), traces):
+
+                            # ----------------------------------------------------------------------------------
+
+                            if key.replace('/', '') in h_file and 'stim' in h_file[key][test].attrs:
+                                stimuli = json.loads(h_file[key][test].attrs['stim'])
+                                stimulus = stimuli[trace - 1]
+                                fs = stimulus['samplerate_da']
+                            else:
+                                fs = seg_sample_rate
+
+                            # ----------------------------------------------------------------------------------
+
+                            for rep in islice(count(1), reps):
+                                for channel in islice(count(1), channels):
                                     if export_raw:
-                                        seg_writer.writerow(['', '', '', 'rep_' + str(rep)])
-                                    for channel in islice(count(1), channels):
-                                        if export_raw:
-                                            seg_writer.writerow(['', '', '', '', 'chan_' + str(channel)])
+
+                                        if no_chan:
                                             seg_writer.writerow(
-                                                ['', '', '', '', ''] + h_file[key][test].value[trace - 1, rep - 1,
-                                                                       channel - 1,
-                                                                       :].tolist())
-
-                                        data_key = str(test) + '_trace_' + str(trace) + '_rep_' + str(
-                                            rep) + '_chan_' + str(
-                                            channel)
-                                        data_dict[data_key] = h_file[key][test].value[trace - 1, rep - 1, channel - 1,
-                                                              :].tolist()
-
-                                        first_spike = False
-                                        spike_size = 0
-                                        spike_num = 0
-                                        spike_count = 0
-                                        sample_num = 0
-                                        prev_volt = 0
-                                        spike_times = []
-                                        for sample in data_dict[data_key]:
-                                            sample_num += 1
-
-                                            if 'inverse' in thresh_type:
-                                                # inverse threshold type
-                                                if sample <= threshold:
-                                                    if spike_size > sample:
-                                                        spike_size = sample
-                                                        spike_num = sample_num
-
-                                                if sample > threshold:
-                                                    if prev_volt <= threshold:
-                                                        # spike just ended
-                                                        if (spike_num * sample_length_ms) not in spike_times:
-                                                            spike_count += 1
-                                                            spike_times.append(spike_num * sample_length_ms)
-
-                                                            if first_spike is False:
-                                                                first_spike = True
-                                                                first_spike_dict[
-                                                                    data_key] = spike_num * sample_length_ms
-
-                                                            spike_size = 0
-
-                                                if (sample_num == len(data_dict[data_key])) and (sample <= threshold):
-                                                    # spike just ended
-                                                    spike_count += 1
-                                                    spike_times.append(spike_num * sample_length_ms)
-
-                                                    if first_spike is False:
-                                                        first_spike = True
-                                                        first_spike_dict[data_key] = spike_num * sample_length_ms
-
-                                                    spike_size = 0
-                                            else:
-                                                # normal threshold type
-                                                if sample >= threshold:
-                                                    if spike_size < sample:
-                                                        spike_size = sample
-                                                        spike_num = sample_num
-
-                                                if sample < threshold:
-                                                    if prev_volt >= threshold:
-                                                        # spike just ended
-                                                        if (spike_num * sample_length_ms) not in spike_times:
-                                                            spike_count += 1
-                                                            spike_times.append(spike_num * sample_length_ms)
-
-                                                            if first_spike is False:
-                                                                first_spike = True
-                                                                first_spike_dict[
-                                                                    data_key] = spike_num * sample_length_ms
-
-                                                            spike_size = 0
-
-                                                if (sample_num == len(data_dict[data_key])) and (sample >= threshold):
-                                                    # spike just ended
-                                                    spike_count += 1
-                                                    spike_times.append(spike_num * sample_length_ms)
-
-                                                    if first_spike is False:
-                                                        first_spike = True
-                                                        first_spike_dict[data_key] = spike_num * sample_length_ms
-
-                                                    spike_size = 0
-
-                                            prev_volt = sample
-
-                                        if data_key not in first_spike_dict:
-                                            first_spike_dict[data_key] = float('nan')
-
-                                        spike_count_dict[data_key] = spike_count
-                                        spike_times_dict[data_key] = spike_times
-
-                                        if export_spikes:
-                                            stats_writer.writerow(
                                                 [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                                 'rep_' + str(rep),
-                                                 'chan_' + str(channel), '', spike_count_dict[data_key],
-                                                 first_spike_dict[data_key],
-                                                 ''] + spike_times_dict[data_key])
+                                                'rep_' + str(rep), 'chan_' + str(channel), ''] +
+                                                h_file[key][test].value[trace - 1, rep - 1, :].tolist())
+                                        else:
+                                            seg_writer.writerow(
+                                                [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                                'rep_' + str(rep), 'chan_' + str(channel), ''] +
+                                                h_file[key][test].value[trace - 1, rep - 1, channel - 1, :].tolist())
 
-                                        reps_percent = (float(rep)) / reps
-                                        traces_percent = (float(trace) - 1 + reps_percent) / traces
-                                        tests_percent = (float(test_count) + traces_percent) / test_total
-                                        segs_percent = (float(key_count) + tests_percent) / key_total
-                                        string = 'Total ' + '{:7.2%}'.format(segs_percent) + ' ... ' + key.replace(
-                                            'segment_', 'seg_') + '{:4.0%}'.format(
-                                            tests_percent) + ' ... ' + test + '{:4.0%}'.format(
-                                            traces_percent) + ' ... ' + 'trace_{} {:4.0%}'.format(trace,
-                                            reps_percent) + ' ... ' + 'rep_{}'.format(rep)
+                                    if no_chan:
+                                        signal = h_file[key][test].value[trace - 1, rep - 1, :]
+                                    else:
+                                        signal = h_file[key][test].value[trace - 1, rep - 1, channel - 1, :]
 
-                                        self.ui.progressBar.setValue(segs_percent * 100)
-                                        self.ui.textEdit.append(string)
-                                        self.update()
-                                        QtGui.qApp.processEvents()
+                                    if 'inverse' in thresh_type:
+                                        signal[:] = [i * -1 for i in signal]
 
-                                        # print dataKey
-                                        # print 'spikeCount: ', spikeCountDict[dataKey]
-                                        # print 'firstSpike: ', firstSpikeDict[dataKey]
-                                        # print 'spikeTimes: ', spikeTimesDict[dataKey], '\n'
+                                    spike_times = get_spike_times(signal, threshold, fs)
+                                    spike_times[:] = [i * 1000 for i in spike_times]
+                                    spike_count = len(spike_times)
 
-                            if export_raw:
-                                seg_file.close()
-                            self.ui.textEdit.append(test + ' Complete\n')
+                                    if spike_count == 0:
+                                        first_spike = float('nan')
+                                    else:
+                                        first_spike = spike_times[0]
 
-                    print ''
+                                    if export_spikes:
+                                        stats_writer.writerow(
+                                            [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                             'rep_' + str(rep), 'chan_' + str(channel), '', spike_count,
+                                             first_spike, ''] + spike_times)
 
-            else:
-                if export_spikes:
-                    stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_spikes.csv'
+                                    reps_percent = (float(rep)) / reps
+                                    traces_percent = (float(trace) - 1 + reps_percent) / traces
+                                    string = test + ' {:7.2%}'.format(
+                                        traces_percent) + ' ... ' + 'trace_{} {:4.0%}'.format(
+                                        trace, reps_percent) + ' ... ' + 'rep_{}'.format(rep)
 
-                    try:
-                        stats_file = open(stats_file_name, 'wb')
-                    except IOError, e:
-                        self.ui.textEdit.append('Unable to open ' + get_file_name(stats_file_name))
-                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
-                    stats_writer = csv.writer(stats_file)
+                                    self.ui.progressBar.setValue(traces_percent * 100)
+                                    self.ui.textEdit.append(string)
+                                    self.update()
+                                    QtGui.qApp.processEvents()
 
-                    stats_writer.writerow(['File', filename])
-                    stats_writer.writerow(['Test', extract_test])
-                    stats_writer.writerow(['Threshold', threshold])
-                    stats_writer.writerow(['Type', thresh_type])
-                    stats_writer.writerow([])
-                    stats_writer.writerow(
-                        ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spikes', 'First Spike (ms)', '',
-                         'Spike Times (ms)'])
-                    stats_writer.writerow([])
+                        if export_raw:
+                            seg_file.close()
+                        self.ui.textEdit.append(test + ' Complete\n')
 
-                for key in h_file.keys():
-
-                    # If key is a segment
-                    if 'segment' in key:
-                        # print 'Seg:', key
-
-                        seg_sample_rate = h_file[key].attrs['samplerate_ad']
-
-                        for test in h_file[key].keys():
-                            if test == extract_test:
-
-                                if export_raw:
-                                    temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_raw.csv'
-                                    try:
-                                        seg_file = open(temp_filename, 'wb')
-                                    except IOError, e:
-                                        self.ui.textEdit.append('Unable to open ' + get_file_name(temp_filename))
-                                        self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
-                                    seg_writer = csv.writer(seg_file)
-
-                                    seg_writer.writerow([key.replace('segment_', 'seg_'), ''])
-                                    seg_writer.writerow(['', test])
-
-                                traces = h_file[key][test].value.shape[0]
-                                reps = h_file[key][test].value.shape[1]
-                                channels = h_file[key][test].value.shape[2]
-                                samples = h_file[key][test].value.shape[3]
-
-                                # Measured in seconds
-                                window_duration = samples / seg_sample_rate
-                                sample_length = window_duration / samples
-                                # Convert to ms
-                                sample_length_ms = sample_length * 1000
-                                for trace in islice(count(1), traces):
-                                    # print '    ', '    ', trace
-                                    if export_raw:
-                                        seg_writer.writerow(['', '', 'trace_' + str(trace)])
-                                    for rep in islice(count(1), reps):
-                                        # print '    ', '    ', '    ', rep
-                                        if export_raw:
-                                            seg_writer.writerow(['', '', '', 'rep_' + str(rep)])
-                                        for channel in islice(count(1), channels):
-                                            if export_raw:
-                                                seg_writer.writerow(['', '', '', '', 'chan_' + str(channel)])
-                                                seg_writer.writerow(
-                                                    ['', '', '', '', ''] + h_file[key][test].value[trace - 1, rep - 1,
-                                                                           channel - 1, :].tolist())
-
-                                            data_key = str(test) + '_trace_' + str(trace) + '_rep_' + str(
-                                                rep) + '_chan_' + str(
-                                                channel)
-                                            data_dict[data_key] = h_file[key][test].value[trace - 1, rep - 1,
-                                                                  channel - 1,
-                                                                  :].tolist()
-
-                                            first_spike = False
-                                            spike_size = 0
-                                            spike_num = 0
-                                            spike_count = 0
-                                            sample_num = 0
-                                            prev_volt = 0
-                                            spike_times = []
-                                            for sample in data_dict[data_key]:
-                                                sample_num += 1
-
-                                                if 'inverse' in thresh_type:
-                                                    # inverse threshold type
-                                                    if sample <= threshold:
-                                                        if spike_size > sample:
-                                                            spike_size = sample
-                                                            spike_num = sample_num
-
-                                                    if sample > threshold:
-                                                        if prev_volt <= threshold:
-                                                            # spike just ended
-                                                            if (spike_num * sample_length_ms) not in spike_times:
-                                                                spike_count += 1
-                                                                spike_times.append(spike_num * sample_length_ms)
-
-                                                                if first_spike is False:
-                                                                    first_spike = True
-                                                                    first_spike_dict[
-                                                                        data_key] = spike_num * sample_length_ms
-
-                                                                spike_size = 0
-
-                                                    if (sample_num == len(data_dict[data_key])) and (
-                                                                sample <= threshold):
-                                                        # spike just ended
-                                                        spike_count += 1
-                                                        spike_times.append(spike_num * sample_length_ms)
-
-                                                        if first_spike is False:
-                                                            first_spike = True
-                                                            first_spike_dict[data_key] = spike_num * sample_length_ms
-
-                                                        spike_size = 0
-                                                else:
-                                                    # normal threshold type
-                                                    if sample >= threshold:
-                                                        if spike_size < sample:
-                                                            spike_size = sample
-                                                            spike_num = sample_num
-
-                                                    if sample < threshold:
-                                                        if prev_volt >= threshold:
-                                                            # spike just ended
-                                                            if (spike_num * sample_length_ms) not in spike_times:
-                                                                spike_count += 1
-                                                                spike_times.append(spike_num * sample_length_ms)
-
-                                                                if first_spike is False:
-                                                                    first_spike = True
-                                                                    first_spike_dict[
-                                                                        data_key] = spike_num * sample_length_ms
-
-                                                                spike_size = 0
-
-                                                    if (sample_num == len(data_dict[data_key])) and (
-                                                                sample >= threshold):
-                                                        # spike just ended
-                                                        spike_count += 1
-                                                        spike_times.append(spike_num * sample_length_ms)
-
-                                                        if first_spike is False:
-                                                            first_spike = True
-                                                            first_spike_dict[data_key] = spike_num * sample_length_ms
-
-                                                        spike_size = 0
-
-                                                prev_volt = sample
-
-                                            if data_key not in first_spike_dict:
-                                                first_spike_dict[data_key] = float('nan')
-
-                                            spike_count_dict[data_key] = spike_count
-                                            spike_times_dict[data_key] = spike_times
-
-                                            if export_spikes:
-                                                stats_writer.writerow(
-                                                    [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                                     'rep_' + str(rep),
-                                                     'chan_' + str(channel), '', spike_count_dict[data_key],
-                                                     first_spike_dict[data_key],
-                                                     ''] + spike_times_dict[data_key])
-
-                                            reps_percent = (float(rep)) / reps
-                                            traces_percent = (float(trace) - 1 + reps_percent) / traces
-                                            string = test + ' {:7.2%}'.format(
-                                                traces_percent) + ' ... ' + 'trace_{} {:4.0%}'.format(
-                                                trace, reps_percent) + ' ... ' + 'rep_{}'.format(rep)
-
-                                            self.ui.progressBar.setValue(traces_percent * 100)
-                                            self.ui.textEdit.append(string)
-                                            self.update()
-                                            QtGui.qApp.processEvents()
-
-                                if export_raw:
-                                    seg_file.close()
-                                self.ui.textEdit.append(test + ' Complete\n')
-
-            if export_spikes:
-                stats_file.close()
+        if export_spikes:
+            stats_file.close()
 
         self.ui.textEdit.append('Extraction Complete\n')
         import subprocess
+
         explorer_open = 'explorer /root, ' + get_folder_path(str(filename))
         subprocess.Popen(explorer_open)
 
@@ -526,6 +272,7 @@ class MyForm(QtGui.QMainWindow):
 
         self.ui.progressBar.reset()
         QtCore.QTimer.singleShot(0, self.extract)
+
 
 def get_folder_path(path):
     edit_path = path.replace('/', '\\')
@@ -535,10 +282,60 @@ def get_folder_path(path):
         new_path = new_path + item + '\\'
     return new_path
 
+
 def get_file_name(path):
     edit_path = path.replace('/', '\\')
     split_list = edit_path.split('\\')
     return split_list[-1]
+
+
+def get_spike_times(signal, threshold, fs):
+    times = []
+    over, = np.where(signal > float(threshold))
+    segments, = np.where(np.diff(over) > 1)
+
+    if len(over) > 1:
+        if len(segments) == 0:
+            segments = [0, len(over) - 1]
+        else:
+            # add end points to sections for looping
+            if segments[0] != 0:
+                segments = np.insert(segments, [0], [0])
+            else:
+                # first point in singleton
+                times.append(float(over[0]) / fs)
+                if 1 not in segments:
+                    # make sure that first point is in there
+                    segments[0] = 1
+            if segments[-1] != len(over) - 1:
+                segments = np.insert(segments, [len(segments)], [len(over) - 1])
+            else:
+                times.append(float(over[-1]) / fs)
+
+        for iseg in range(1, len(segments)):
+            if segments[iseg] - segments[iseg - 1] == 1:
+                # only single point over threshold
+                idx = over[segments[iseg]]
+            else:
+                segments[0] = segments[0] - 1
+                # find maximum of continuous set over max
+                idx = over[segments[iseg - 1] + 1] + np.argmax(
+                    signal[over[segments[iseg - 1] + 1]:over[segments[iseg]]])
+            times.append(float(idx) / fs)
+    elif len(over) == 1:
+        times.append(float(over[0]) / fs)
+
+    if len(times) > 0:
+        refract = 0.002
+        times_refract = []
+        times_refract.append(times[0])
+        for i in range(1, len(times)):
+            if times_refract[-1] + refract <= times[i]:
+                times_refract.append(times[i])
+        return times_refract
+    else:
+        return times
+
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)

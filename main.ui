@@ -87,13 +87,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_10">
           <item>
-           <widget class="QComboBox" name="comboBox_test_num">
-            <item>
-             <property name="text">
-              <string>All Tests</string>
-             </property>
-            </item>
-           </widget>
+           <widget class="QComboBox" name="comboBox_test_num"/>
           </item>
           <item>
            <spacer name="horizontalSpacer_2">

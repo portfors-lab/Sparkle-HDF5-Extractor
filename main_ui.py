@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'c:/Users/Joel/Documents/Sparkle-HDF5-Extractor/main.ui'
+# Form implementation generated from reading ui file 'c:/Users/Joel/Documents/sparkle-HDF5-Extractor/main.ui'
 #
-# Created: Thu Oct 15 15:32:44 2015
+# Created: Mon Nov 09 17:54:54 2015
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -69,7 +69,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_10.setObjectName(_fromUtf8("horizontalLayout_10"))
         self.comboBox_test_num = QtGui.QComboBox(self.centralwidget)
         self.comboBox_test_num.setObjectName(_fromUtf8("comboBox_test_num"))
-        self.comboBox_test_num.addItem(_fromUtf8(""))
         self.horizontalLayout_10.addWidget(self.comboBox_test_num)
         spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_10.addItem(spacerItem1)
@@ -174,7 +173,6 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "Open:", None))
         self.pushButton_browse.setText(_translate("MainWindow", "Browse...", None))
         self.label_3.setText(_translate("MainWindow", "Test Number:", None))
-        self.comboBox_test_num.setItemText(0, _translate("MainWindow", "All Tests", None))
         self.label_5.setText(_translate("MainWindow", "Threshold:", None))
         self.doubleSpinBox_threshold.setSuffix(_translate("MainWindow", " V", None))
         self.label_2.setText(_translate("MainWindow", "Threshold Type:", None))
