@@ -21,6 +21,7 @@ class MyForm(QtGui.QMainWindow):
 
         QtCore.QObject.connect(self.ui.pushButton_browse, QtCore.SIGNAL("clicked()"), self.browse)
         QtCore.QObject.connect(self.ui.pushButton_start, QtCore.SIGNAL("clicked()"), self.start)
+        QtCore.QObject.connect(self.ui.pushButton_auto_threshold, QtCore.SIGNAL("clicked()"), self.auto_threshold)
 
     def browse(self):
         self.ui.comboBox_test_num.clear()
@@ -31,18 +32,71 @@ class MyForm(QtGui.QMainWindow):
 
         # If the filename is not blank, attempt to extract test numbers and place them into the combobox
         if self.filename != '':
-            self.h_file = h5py.File(unicode(self.filename), 'r')
+            if '.hdf5' in self.filename:
+                try:
+                    self.h_file = h5py.File(unicode(self.filename), 'r')
+                except IOError:
+                    self.ui.textEdit.append('Error: I/O Error\n')
+                    return
 
-            tests = {}
-            for key in self.h_file.keys():
-                if 'segment' in key:
-                    for test in self.h_file[key].keys():
-                        tests[test] = int(test.replace('test_', ''))
+                tests = {}
+                for key in self.h_file.keys():
+                    if 'segment' in key:
+                        for test in self.h_file[key].keys():
+                            tests[test] = int(test.replace('test_', ''))
 
-            sorted_tests = sorted(tests.items(), key=operator.itemgetter(1))
+                sorted_tests = sorted(tests.items(), key=operator.itemgetter(1))
 
-            for test in sorted_tests:
-                self.ui.comboBox_test_num.addItem(test[0])
+                for test in sorted_tests:
+                    self.ui.comboBox_test_num.addItem(test[0])
+            else:
+                self.ui.textEdit.append('Error: Must select a .hdf5 file.\n')
+                return
+        else:
+            self.ui.textEdit.append('Error: Must select a file to open.\n')
+            return
+
+    def auto_threshold(self):
+        threshFraction = 0.7
+
+        filename = self.filename = self.ui.lineEdit_file_name.text()
+
+        # Validate filename
+        if filename != '':
+            if '.hdf5' in filename:
+                try:
+                    h_file = h5py.File(unicode(self.filename), 'r')
+                    target_test = self.ui.comboBox_test_num.currentText()
+                except IOError:
+                    self.ui.textEdit.append('Error: I/O Error\n')
+                    return
+            else:
+                self.ui.textEdit.append('Error: Must select a .hdf5 file.\n')
+                return
+        else:
+            self.ui.textEdit.append('Error: Must select a file to open.\n')
+            return
+
+        # Find target segment
+        for segment in h_file.keys():
+            for test in h_file[segment].keys():
+                if target_test == test:
+                    target_seg = segment
+                    target_test = test
+
+        trace_data = h_file[target_seg][target_test].value
+
+        if len(trace_data.shape) == 4:
+            trace_data = trace_data.squeeze()
+
+        # Compute threshold from average maximum of traces
+        max_trace = []
+        for n in range(len(trace_data[1, :, 0])):
+            max_trace.append(np.max(np.abs(trace_data[1, n, :])))
+        average_max = np.array(max_trace).mean()
+        thresh = threshFraction * average_max
+
+        self.ui.doubleSpinBox_threshold.setValue(thresh)
 
     def extract(self):
         filename = self.filename = self.ui.lineEdit_file_name.text()
