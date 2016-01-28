@@ -23,6 +23,8 @@ class MyForm(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.pushButton_start, QtCore.SIGNAL("clicked()"), self.start)
         QtCore.QObject.connect(self.ui.pushButton_auto_threshold, QtCore.SIGNAL("clicked()"), self.auto_threshold)
 
+        self.setWindowIcon(QtGui.QIcon('horsey.ico'))
+
     def browse(self):
         self.ui.comboBox_test_num.clear()
 
@@ -239,8 +241,6 @@ class MyForm(QtGui.QMainWindow):
                             reps = h_file[key][test].value.shape[1]
                             channels = 1
                             samples = h_file[key][test].value.shape[2]
-
-                        print no_chan
 
                         # Measured in seconds
                         window_duration = samples / seg_sample_rate
