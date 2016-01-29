@@ -254,7 +254,8 @@ class MyForm(QtGui.QMainWindow):
                             if key.replace('/', '') in h_file and 'stim' in h_file[key][test].attrs:
                                 stimuli = json.loads(h_file[key][test].attrs['stim'])
                                 stimulus = stimuli[trace - 1]
-                                fs = stimulus['samplerate_da']
+                                # fs = stimulus['samplerate_da']
+                                fs = seg_sample_rate
                             else:
                                 fs = seg_sample_rate
 
