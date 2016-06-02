@@ -22,6 +22,7 @@ class MyForm(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.pushButton_browse, QtCore.SIGNAL("clicked()"), self.browse)
         QtCore.QObject.connect(self.ui.pushButton_start, QtCore.SIGNAL("clicked()"), self.start)
         QtCore.QObject.connect(self.ui.pushButton_auto_threshold, QtCore.SIGNAL("clicked()"), self.auto_threshold)
+        QtCore.QObject.connect(self.ui.comboBox_test_num, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.test_change)
 
         self.setWindowIcon(QtGui.QIcon('horsey.ico'))
 
@@ -49,14 +50,79 @@ class MyForm(QtGui.QMainWindow):
 
                 sorted_tests = sorted(tests.items(), key=operator.itemgetter(1))
 
+                temp = []
                 for test in sorted_tests:
-                    self.ui.comboBox_test_num.addItem(test[0])
+                    temp.append(test[0])
+                self.ui.comboBox_test_num.addItems(temp)
             else:
                 self.ui.textEdit.append('Error: Must select a .hdf5 file.\n')
                 return
         else:
             self.ui.textEdit.append('Error: Must select a file to open.\n')
             return
+
+    def test_change(self):
+
+        filename = self.filename = self.ui.lineEdit_file_name.text()
+        self.ui.comboBox_channel.clear()
+        print 'combo clear'
+
+        # Validate filename
+        if filename != '':
+            if '.hdf5' in filename:
+                try:
+                    h_file = h5py.File(unicode(self.filename), 'r')
+                    target_test = self.ui.comboBox_test_num.currentText()
+                except IOError:
+                    self.ui.textEdit.append('Error: I/O Error\n')
+                    return
+            else:
+                self.ui.textEdit.append('Error: Must select a .hdf5 file.\n')
+                return
+        else:
+            self.ui.textEdit.append('Error: Must select a file to open.\n')
+            return
+
+        target_seg = None
+
+        # Find target segment
+        for segment in h_file.keys():
+            for test in h_file[segment].keys():
+                if target_test == test:
+                    target_seg = segment
+                    target_test = test
+
+        if target_seg is None:
+            return
+
+        # If there are more than three attributes in value (test, trace, rep, channel)
+        temp = h_file[target_seg][target_test].value.shape
+        if len(temp) > 3:
+            channels = temp[2]
+        else:
+            channels = 1
+
+        if channels == 1:
+            self.ui.comboBox_channel.addItem('channel_1')
+        else:
+            temp = []
+            for i in range(channels):
+                temp.append('channel_' + str(i + 1))
+            self.ui.comboBox_channel.addItems(temp)
+
+        # Add Comments
+        try:
+            comment = h_file[target_seg].attrs['comment']
+            self.ui.lineEdit_comments.setEnabled(True)
+            self.ui.lineEdit_comments.setText(comment)
+        except:
+            self.ui.lineEdit_comments.clear()
+            self.ui.textEdit.append("Error: Can't open attribute (Can't locate attribute: 'comment')\n")
+
+        if self.ui.lineEdit_comments.text() == '':
+            self.ui.lineEdit_comments.setDisabled(True)
+
+        h_file.close()
 
     def auto_threshold(self):
         threshFraction = 0.7
@@ -187,9 +253,9 @@ class MyForm(QtGui.QMainWindow):
 
         if export_spikes:
             if 'inverse' in thresh_type:
-                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_inverse_spikes(' + str(threshold) + 'V).csv'
+                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_' + self.ui.comboBox_channel.currentText() + '_inverse_spikes(' + str(threshold) + 'V).csv'
             else:
-                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_spikes(' + str(threshold) + 'V).csv'
+                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_' + self.ui.comboBox_channel.currentText() + '_spikes(' + str(threshold) + 'V).csv'
 
             try:
                 stats_file = open(stats_file_name, 'wb')
@@ -219,9 +285,9 @@ class MyForm(QtGui.QMainWindow):
 
                         if export_raw:
                             if 'inverse' in thresh_type:
-                                temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_raw.csv'
+                                temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_' + self.ui.comboBox_channel.currentText() + '_raw.csv'
                             else:
-                                temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_raw.csv'
+                                temp_filename = filename.replace('.hdf5', '_') + key + '_' + test + '_' + self.ui.comboBox_channel.currentText() + '_raw.csv'
                             try:
                                 seg_file = open(temp_filename, 'wb')
                             except IOError, e:
@@ -252,8 +318,8 @@ class MyForm(QtGui.QMainWindow):
                             # ----------------------------------------------------------------------------------
 
                             if key.replace('/', '') in h_file and 'stim' in h_file[key][test].attrs:
-                                stimuli = json.loads(h_file[key][test].attrs['stim'])
-                                stimulus = stimuli[trace - 1]
+                                # stimuli = json.loads(h_file[key][test].attrs['stim'])
+                                # stimulus = stimuli[trace - 1]
                                 # fs = stimulus['samplerate_da']
                                 fs = seg_sample_rate
                             else:
@@ -263,52 +329,53 @@ class MyForm(QtGui.QMainWindow):
 
                             for rep in islice(count(1), reps):
                                 for channel in islice(count(1), channels):
-                                    if export_raw:
+                                    if self.ui.comboBox_channel.currentText() == 'channel_' + str(channel):
+                                        if export_raw:
+
+                                            if no_chan:
+                                                seg_writer.writerow(
+                                                    [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                                    'rep_' + str(rep), 'chan_' + str(channel), ''] +
+                                                    h_file[key][test].value[trace - 1, rep - 1, :].tolist())
+                                            else:
+                                                seg_writer.writerow(
+                                                    [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                                    'rep_' + str(rep), 'chan_' + str(channel), ''] +
+                                                    h_file[key][test].value[trace - 1, rep - 1, channel - 1, :].tolist())
 
                                         if no_chan:
-                                            seg_writer.writerow(
-                                                [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                                'rep_' + str(rep), 'chan_' + str(channel), ''] +
-                                                h_file[key][test].value[trace - 1, rep - 1, :].tolist())
+                                            signal = h_file[key][test].value[trace - 1, rep - 1, :]
                                         else:
-                                            seg_writer.writerow(
+                                            signal = h_file[key][test].value[trace - 1, rep - 1, channel - 1, :]
+
+                                        if 'inverse' in thresh_type:
+                                            signal[:] = [i * -1 for i in signal]
+
+                                        spike_times = get_spike_times(signal, threshold, fs)
+                                        spike_times[:] = [i * 1000 for i in spike_times]
+                                        spike_count = len(spike_times)
+
+                                        if spike_count == 0:
+                                            first_spike = float('nan')
+                                        else:
+                                            first_spike = spike_times[0]
+
+                                        if export_spikes:
+                                            stats_writer.writerow(
                                                 [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                                'rep_' + str(rep), 'chan_' + str(channel), ''] +
-                                                h_file[key][test].value[trace - 1, rep - 1, channel - 1, :].tolist())
+                                                 'rep_' + str(rep), 'chan_' + str(channel), '', spike_count,
+                                                 first_spike, ''] + spike_times)
 
-                                    if no_chan:
-                                        signal = h_file[key][test].value[trace - 1, rep - 1, :]
-                                    else:
-                                        signal = h_file[key][test].value[trace - 1, rep - 1, channel - 1, :]
+                                        reps_percent = (float(rep)) / reps
+                                        traces_percent = (float(trace) - 1 + reps_percent) / traces
+                                        string = test + ' {:7.2%}'.format(
+                                            traces_percent) + ' ... ' + 'trace_{} {:4.0%}'.format(
+                                            trace, reps_percent) + ' ... ' + 'rep_{}'.format(rep)
 
-                                    if 'inverse' in thresh_type:
-                                        signal[:] = [i * -1 for i in signal]
-
-                                    spike_times = get_spike_times(signal, threshold, fs)
-                                    spike_times[:] = [i * 1000 for i in spike_times]
-                                    spike_count = len(spike_times)
-
-                                    if spike_count == 0:
-                                        first_spike = float('nan')
-                                    else:
-                                        first_spike = spike_times[0]
-
-                                    if export_spikes:
-                                        stats_writer.writerow(
-                                            [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                             'rep_' + str(rep), 'chan_' + str(channel), '', spike_count,
-                                             first_spike, ''] + spike_times)
-
-                                    reps_percent = (float(rep)) / reps
-                                    traces_percent = (float(trace) - 1 + reps_percent) / traces
-                                    string = test + ' {:7.2%}'.format(
-                                        traces_percent) + ' ... ' + 'trace_{} {:4.0%}'.format(
-                                        trace, reps_percent) + ' ... ' + 'rep_{}'.format(rep)
-
-                                    self.ui.progressBar.setValue(traces_percent * 100)
-                                    self.ui.textEdit.append(string)
-                                    self.update()
-                                    QtGui.qApp.processEvents()
+                                        self.ui.progressBar.setValue(traces_percent * 100)
+                                        self.ui.textEdit.append(string)
+                                        self.update()
+                                        QtGui.qApp.processEvents()
 
                         if export_raw:
                             seg_file.close()
