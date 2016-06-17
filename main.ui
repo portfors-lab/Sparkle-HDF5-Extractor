@@ -246,7 +246,7 @@
            </font>
           </property>
           <property name="title">
-           <string>Export to CSV </string>
+           <string>Export </string>
           </property>
           <property name="flat">
            <bool>true</bool>
@@ -276,7 +276,7 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
+           <item row="0" column="2">
             <widget class="QCheckBox" name="checkBox_spikes">
              <property name="font">
               <font>
@@ -288,7 +288,7 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="2">
+           <item row="0" column="3">
             <widget class="QCheckBox" name="checkBox_raw">
              <property name="font">
               <font>
@@ -297,6 +297,18 @@
              </property>
              <property name="text">
               <string>Raw Data</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QCheckBox" name="checkBox_stim">
+             <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+              </font>
+             </property>
+             <property name="text">
+              <string>Stimulus</string>
              </property>
             </widget>
            </item>
@@ -446,6 +458,12 @@
            <bool>true</bool>
           </property>
           <layout class="QGridLayout" name="gridLayout_7">
+           <property name="topMargin">
+            <number>9</number>
+           </property>
+           <property name="bottomMargin">
+            <number>5</number>
+           </property>
            <item row="0" column="0">
             <widget class="QLineEdit" name="lineEdit_comments">
              <property name="enabled">
