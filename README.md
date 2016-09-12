@@ -2,7 +2,6 @@
 Extract data from sparkle .hdf5 files into .csv files
 
 ![alt tag](https://raw.githubusercontent.com/portfors-lab/Sparkle-HDF5-Extractor/master/SparkleHDF5Extractor.png "Main Window")
-======
 
 ### Instructions:
 1. Select a Sparkle .hdf5 file by typing in the absolute path or searching for it with the “Browse” button.
