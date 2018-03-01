@@ -178,7 +178,8 @@ class MyForm(QtGui.QMainWindow):
             return
 
         if not self.ui.checkBox_calibration.isChecked() and not self.ui.checkBox_stim.isChecked() and \
-                not self.ui.checkBox_spikes.isChecked() and not self.ui.checkBox_raw.isChecked():
+                not self.ui.checkBox_spikes.isChecked() and not self.ui.checkBox_raw.isChecked() and \
+                not self.ui.checkBox_spikes2.isChecked():
             self.ui.textEdit.append('Error: Must select at least one type of export.\n')
             return
 
@@ -222,6 +223,11 @@ class MyForm(QtGui.QMainWindow):
             export_raw = True
         else:
             export_raw = False
+        if self.ui.checkBox_spikes2.isChecked():
+            self.ui.textEdit.append('Export: Spike Times 2')
+            export_spikes2 = True
+        else:
+            export_spikes2 = False
 
         self.ui.textEdit.append('')
 
@@ -418,6 +424,111 @@ class MyForm(QtGui.QMainWindow):
                             self.ui.textEdit.append(test + ' Complete\n')
 
         if export_spikes:
+            stats_file.close()
+
+        if export_spikes2:
+            if 'inverse' in thresh_type:
+                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_' + self.ui.comboBox_channel.currentText() + '_inverse_spikes2(' + str(threshold) + 'V).csv'
+            else:
+                stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_' + self.ui.comboBox_channel.currentText() + '_spikes2(' + str(threshold) + 'V).csv'
+
+            try:
+                stats_file = open(stats_file_name, 'wb')
+            except IOError, e:
+                self.ui.textEdit.append('Unable to open ' + get_file_name(stats_file_name))
+                self.ui.textEdit.append('Error ' + str(e.errno) + ': ' + e.strerror + '\n')
+            stats_writer = csv.writer(stats_file)
+
+            stats_writer.writerow(['File', filename])
+            stats_writer.writerow(['Test', extract_test])
+            stats_writer.writerow(['Threshold', threshold])
+            stats_writer.writerow(['Type', thresh_type])
+            stats_writer.writerow([])
+            stats_writer.writerow(
+                ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spike Times (ms)'])
+            stats_writer.writerow([])
+
+            for key in h_file.keys():
+
+                # If key is a segment
+                if 'segment' in key:
+                    seg_sample_rate = h_file[key].attrs['samplerate_ad']
+
+                    for test in h_file[key].keys():
+                        if test == extract_test:
+
+                            if len(h_file[key][test].value.shape) > 3:
+                                no_chan = False
+                                traces = h_file[key][test].value.shape[0]
+                                reps = h_file[key][test].value.shape[1]
+                                channels = h_file[key][test].value.shape[2]
+                                samples = h_file[key][test].value.shape[3]
+                            else:
+                                no_chan = True
+                                traces = h_file[key][test].value.shape[0]
+                                reps = h_file[key][test].value.shape[1]
+                                channels = 1
+                                samples = h_file[key][test].value.shape[2]
+
+                            # Measured in seconds
+                            window_duration = samples / seg_sample_rate
+                            sample_length = window_duration / samples
+                            # Convert to ms
+                            sample_length_ms = sample_length * 1000
+                            for trace in islice(count(1), traces):
+
+                                # ----------------------------------------------------------------------------------
+
+                                if key.replace('/', '') in h_file and 'stim' in h_file[key][test].attrs:
+                                    # stimuli = json.loads(h_file[key][test].attrs['stim'])
+                                    # stimulus = stimuli[trace - 1]
+                                    # fs = stimulus['samplerate_da']
+                                    fs = seg_sample_rate
+                                else:
+                                    fs = seg_sample_rate
+
+                                # ----------------------------------------------------------------------------------
+
+                                for rep in islice(count(1), reps):
+                                    for channel in islice(count(1), channels):
+                                        if self.ui.comboBox_channel.currentText() == 'channel_' + str(channel):
+
+                                            if no_chan:
+                                                signal = h_file[key][test].value[trace - 1, rep - 1, :]
+                                            else:
+                                                signal = h_file[key][test].value[trace - 1, rep - 1, channel - 1, :]
+
+                                            if 'inverse' in thresh_type:
+                                                signal[:] = [i * -1 for i in signal]
+
+                                            spike_times = get_spike_times(signal, threshold, fs)
+                                            spike_times[:] = [i * 1000 for i in spike_times]
+                                            spike_count = len(spike_times)
+
+                                            if spike_count == 0:
+                                                first_spike = float('nan')
+                                            else:
+                                                first_spike = spike_times[0]
+
+                                            if export_spikes2:
+                                                stats_writer.writerow(
+                                                    [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
+                                                     'rep_' + str(rep), 'chan_' + str(channel)])
+                                                for spike in range(spike_count):
+                                                    if spike_count > 0:
+                                                        stats_writer.writerow(['', '', '', '', '', '', spike_times[spike]])
+
+                                            reps_percent = (float(rep)) / reps
+                                            traces_percent = (float(trace) - 1 + reps_percent) / traces
+                                            string = test + ' {:7.2%}'.format(
+                                                traces_percent) + ' ... ' + 'trace_{} {:4.0%}'.format(
+                                                trace, reps_percent) + ' ... ' + 'rep_{}'.format(rep)
+
+                                            self.ui.progressBar.setValue(traces_percent * 100)
+                                            self.ui.textEdit.append(string)
+                                            self.update()
+                                            QtGui.qApp.processEvents()
+
             stats_file.close()
 
         self.ui.textEdit.append('Extraction Complete\n')
