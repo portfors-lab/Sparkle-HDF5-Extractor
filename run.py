@@ -521,9 +521,6 @@ class MyForm(QtGui.QMainWindow):
                                                 first_spike = spike_times[0]
 
                                             if export_spikes2:
-                                                print("spike_count")
-                                                print(spike_count)
-                                                print(spike_times)
                                                 for spike in range(spike_count):
                                                     if spike_count > 0:
                                                         total_trace_spikes.append( (str(key.replace('segment_', 'seg_')), str(test), 'trace_' + str(trace), 'rep_' + str(rep), 'chan_' + str(channel), str(spike_times[spike]), '') )
@@ -556,7 +553,7 @@ class MyForm(QtGui.QMainWindow):
                     if row < trace_spike_count:
                         row_tuple += trace_groups[trace][row]
                     else:
-                        row_tuple += ('seg_0', 'test_0', 'trace_0', 'rep_0', 'chan_0', '0', '')
+                        row_tuple += ('seg_0', 'test_0', 'trace_' + str(trace+1), 'rep_0', 'chan_0', '0', '')
                     # row_temp = (trace_groups[trace].get(row, ()))
                     # if row_temp == ():
                     #     row_tuple += ('seg_0', 'test_0', 'trace_0', 'rep_0', 'chan_0', '0', '')
