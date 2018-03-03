@@ -448,9 +448,10 @@ class MyForm(QtGui.QMainWindow):
             stats_writer.writerow(['Threshold', threshold])
             stats_writer.writerow(['Type', thresh_type])
             stats_writer.writerow([])
-            stats_writer.writerow(
-                ['Segment', 'Test', 'Trace', 'Rep', 'Channel', 'Spike Times (ms)', ''])
-            stats_writer.writerow([])
+
+            temp_seg = 0
+            temp_test = 0
+            temp_chan = 0
 
             for key in h_file.keys():
 
@@ -460,6 +461,9 @@ class MyForm(QtGui.QMainWindow):
 
                     for test in h_file[key].keys():
                         if test == extract_test:
+
+                            temp_seg = str(key.replace('segment_', 'seg_'))
+                            temp_test = str(test)
 
                             if len(h_file[key][test].value.shape) > 3:
                                 no_chan = False
@@ -503,6 +507,8 @@ class MyForm(QtGui.QMainWindow):
                                     for channel in islice(count(1), channels):
                                         if self.ui.comboBox_channel.currentText() == 'channel_' + str(channel):
 
+                                            temp_chan = 'chan_' + str(channel)
+
                                             if no_chan:
                                                 signal = h_file[key][test].value[trace - 1, rep - 1, :]
                                             else:
@@ -539,12 +545,16 @@ class MyForm(QtGui.QMainWindow):
                                 trace_groups.append(total_trace_spikes)
 
             most_spikes = 0
+            temp_tuple = ()
             for trace in range(len(trace_groups)):
+                temp_tuple += ('Segment', 'Test', 'Trace', 'Rep', 'Channel', 'Spike Times (ms)', '')
+
                 if len(trace_groups[trace]) > most_spikes:
                     most_spikes = len(trace_groups[trace])
-                    print(trace_groups[trace])
-            print('Most Spikes')
-            print(most_spikes)
+
+            stats_writer.writerow(temp_tuple)
+            stats_writer.writerow([])
+
 
             for row in range(most_spikes):
                 row_tuple = ()
@@ -553,7 +563,7 @@ class MyForm(QtGui.QMainWindow):
                     if row < trace_spike_count:
                         row_tuple += trace_groups[trace][row]
                     else:
-                        row_tuple += ('seg_0', 'test_0', 'trace_' + str(trace+1), 'rep_0', 'chan_0', '0', '')
+                        row_tuple += (str(temp_seg), str(temp_test), 'trace_' + str(trace+1), 'rep_0', str(temp_chan), '0', '')
                     # row_temp = (trace_groups[trace].get(row, ()))
                     # if row_temp == ():
                     #     row_tuple += ('seg_0', 'test_0', 'trace_0', 'rep_0', 'chan_0', '0', '')
