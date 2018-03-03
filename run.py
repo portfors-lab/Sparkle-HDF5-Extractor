@@ -426,6 +426,10 @@ class MyForm(QtGui.QMainWindow):
         if export_spikes:
             stats_file.close()
 
+        # --------------------------------------------------------------------------------------------------------------
+        # Spikes 2
+        # --------------------------------------------------------------------------------------------------------------
+
         if export_spikes2:
             if 'inverse' in thresh_type:
                 stats_file_name = filename.replace('.hdf5', '_') + extract_test + '_' + self.ui.comboBox_channel.currentText() + '_inverse_spikes2(' + str(threshold) + 'V).csv'
@@ -445,7 +449,7 @@ class MyForm(QtGui.QMainWindow):
             stats_writer.writerow(['Type', thresh_type])
             stats_writer.writerow([])
             stats_writer.writerow(
-                ['Segment', 'Test', 'Trace', 'Rep', 'Channel', '', 'Spike Times (ms)'])
+                ['Segment', 'Test', 'Trace', 'Rep', 'Channel', 'Spike Times (ms)', ''])
             stats_writer.writerow([])
 
             for key in h_file.keys():
@@ -475,7 +479,13 @@ class MyForm(QtGui.QMainWindow):
                             sample_length = window_duration / samples
                             # Convert to ms
                             sample_length_ms = sample_length * 1000
+
+                            # Used to store trace_spikes by the trace number
+                            trace_groups = []
+
                             for trace in islice(count(1), traces):
+
+                                total_trace_spikes = []
 
                                 # ----------------------------------------------------------------------------------
 
@@ -511,12 +521,12 @@ class MyForm(QtGui.QMainWindow):
                                                 first_spike = spike_times[0]
 
                                             if export_spikes2:
-                                                stats_writer.writerow(
-                                                    [key.replace('segment_', 'seg_'), test, 'trace_' + str(trace),
-                                                     'rep_' + str(rep), 'chan_' + str(channel)])
+                                                print("spike_count")
+                                                print(spike_count)
+                                                print(spike_times)
                                                 for spike in range(spike_count):
                                                     if spike_count > 0:
-                                                        stats_writer.writerow(['', '', '', '', '', '', spike_times[spike]])
+                                                        total_trace_spikes.append( (str(key.replace('segment_', 'seg_')), str(test), 'trace_' + str(trace), 'rep_' + str(rep), 'chan_' + str(channel), str(spike_times[spike]), '') )
 
                                             reps_percent = (float(rep)) / reps
                                             traces_percent = (float(trace) - 1 + reps_percent) / traces
@@ -528,6 +538,34 @@ class MyForm(QtGui.QMainWindow):
                                             self.ui.textEdit.append(string)
                                             self.update()
                                             QtGui.qApp.processEvents()
+
+                                trace_groups.append(total_trace_spikes)
+
+            most_spikes = 0
+            for trace in range(len(trace_groups)):
+                if len(trace_groups[trace]) > most_spikes:
+                    most_spikes = len(trace_groups[trace])
+                    print(trace_groups[trace])
+            print('Most Spikes')
+            print(most_spikes)
+
+            for row in range(most_spikes):
+                row_tuple = ()
+                for trace in range(len(trace_groups)):
+                    trace_spike_count = len(trace_groups[trace])
+                    if row < trace_spike_count:
+                        row_tuple += trace_groups[trace][row]
+                    else:
+                        row_tuple += ('seg_0', 'test_0', 'trace_0', 'rep_0', 'chan_0', '0', '')
+                    # row_temp = (trace_groups[trace].get(row, ()))
+                    # if row_temp == ():
+                    #     row_tuple += ('seg_0', 'test_0', 'trace_0', 'rep_0', 'chan_0', '0', '')
+                    # else:
+                    #     row_tuple += row_temp
+
+                stats_writer.writerow(row_tuple)
+
+
 
             stats_file.close()
 
